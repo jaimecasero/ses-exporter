@@ -125,11 +125,11 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			return
 		}
 
-		sortedSendDataPoints := sortedDataPoint{
+		sortedSendStatistics := sortedDataPoint{
 			Data: sendStatisticsOutput.SendDataPoints,
 		}
-		sort.Sort(sortedSendDataPoints)
-		sortedSendStatistics := sortedSendDataPoints.Data[len(sortedSendDataPoints.Data)-1]
+		sort.Sort(sortedSendStatistics)
+		latestSendStatistics := sortedSendStatistics.Data[len(sortedSendStatistics.Data)-1]
 
 		sendQuotaInput := &ses.GetSendQuotaInput{}
 		sendQuotaOutput, err := svc.GetSendQuota(sendQuotaInput)
@@ -148,9 +148,9 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(e.max24hoursend, prometheus.GaugeValue, *sendQuotaOutput.Max24HourSend, regionName)
 		ch <- prometheus.MustNewConstMetric(e.maxsendrate, prometheus.GaugeValue, *sendQuotaOutput.MaxSendRate, regionName)
 		ch <- prometheus.MustNewConstMetric(e.sentlast24hours, prometheus.GaugeValue, *sendQuotaOutput.SentLast24Hours, regionName)
-		ch <- prometheus.MustNewConstMetric(e.Bounces, prometheus.GaugeValue, float64(*sortedSendStatistics.Bounces), regionName)
-		ch <- prometheus.MustNewConstMetric(e.Complaints, prometheus.GaugeValue, float64(*sortedSendStatistics.Complaints), regionName)
-		ch <- prometheus.MustNewConstMetric(e.DeliveryAttempts, prometheus.GaugeValue, float64(*sortedSendStatistics.DeliveryAttempts), regionName)
-		ch <- prometheus.MustNewConstMetric(e.Rejects, prometheus.GaugeValue, float64(*sortedSendStatistics.Rejects), regionName)
+		ch <- prometheus.MustNewConstMetric(e.Bounces, prometheus.GaugeValue, float64(*latestSendStatistics.Bounces), regionName)
+		ch <- prometheus.MustNewConstMetric(e.Complaints, prometheus.GaugeValue, float64(*latestSendStatistics.Complaints), regionName)
+		ch <- prometheus.MustNewConstMetric(e.DeliveryAttempts, prometheus.GaugeValue, float64(*latestSendStatistics.DeliveryAttempts), regionName)
+		ch <- prometheus.MustNewConstMetric(e.Rejects, prometheus.GaugeValue, float64(*latestSendStatistics.Rejects), regionName)
 	}
 }
