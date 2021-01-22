@@ -26,31 +26,6 @@ Credentials to AWS are provided in the following order:
 
 For more information see the [AWS SDK Documentation](https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html)
 
-### AWS IAM permissions
-
-The app needs sqs list and read access to the sqs policies
-
-```json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Sid": "VisualEditor0",
-            "Effect": "Allow",
-            "Action": [
-                "sqs:ListQueues",
-                "sqs:GetQueueUrl",
-                "sqs:ListDeadLetterSourceQueues",
-                "sqs:ReceiveMessage",
-                "sqs:GetQueueAttributes",
-                "sqs:ListQueueTags"
-            ],
-            "Resource": "*"
-        }
-    ]
-}
-```
-
 ## Environment Variables
 | Variable      | Default Value | Description                                                  |
 |---------------|:---------|:-------------------------------------------------------------|
