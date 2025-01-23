@@ -7,7 +7,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/common/log"
+	"log"
 )
 
 var (
@@ -19,7 +19,7 @@ var (
 
 func logRequest(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Infoln(r.RemoteAddr, r.Method, r.URL)
+		log.Println(r.RemoteAddr, r.Method, r.URL)
 		handler.ServeHTTP(w, r)
 	})
 }
@@ -39,6 +39,6 @@ func main() {
                </body>
                </html>`))
 	})
-	log.Infoln("Starting HTTP server on", *listenAddress)
+	log.Println("Starting HTTP server on", *listenAddress)
 	log.Fatal(http.ListenAndServe(*listenAddress, logRequest(http.DefaultServeMux)))
 }

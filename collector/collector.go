@@ -3,13 +3,11 @@ package collector
 import (
 	"sort"
 
-	"github.com/aws/aws-sdk-go/aws"
-
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ses"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/log"
+	"log"
 )
 
 const (
@@ -107,50 +105,47 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 // Collect fetches the statistics from aws ses sdk, and
 // delivers them as Prometheus metrics. It implements prometheus.Collector.
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
-	awsSesRegions := []string{"us-east-1"} //, "us-east-2", "us-west-1", "us-west-2", "eu-central-1", "eu-west-1"}
-	for _, regionName := range awsSesRegions {
-		svc := ses.New(session.New(), aws.NewConfig().WithRegion(regionName))
-
-		sendStatisticsInput := &ses.GetSendStatisticsInput{}
-		sendStatisticsOutput, err := svc.GetSendStatistics(sendStatisticsInput)
-		if err != nil {
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				default:
-					log.Errorf("Failed to get sending quota from region %s: %s", regionName, aerr)
-				}
-			} else {
-				log.Errorf("Failed to get sending quota from region %s: %s", regionName, err)
+	svc := ses.New(session.New())
+	regionName := svc.SigningRegion
+	sendStatisticsInput := &ses.GetSendStatisticsInput{}
+	sendStatisticsOutput, err := svc.GetSendStatistics(sendStatisticsInput)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			default:
+				log.Fatalf("Failed to get sending quota from region %s: %s", regionName, aerr)
 			}
-			return
+		} else {
+			log.Fatalf("Failed to get sending quota from region %s: %s", regionName, err)
 		}
-
-		sortedSendStatistics := sortedDataPoint{
-			Data: sendStatisticsOutput.SendDataPoints,
-		}
-		sort.Sort(sortedSendStatistics)
-		latestSendStatistics := sortedSendStatistics.Data[len(sortedSendStatistics.Data)-1]
-
-		sendQuotaInput := &ses.GetSendQuotaInput{}
-		sendQuotaOutput, err := svc.GetSendQuota(sendQuotaInput)
-		if err != nil {
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				default:
-					log.Errorf("Failed to get sending quota from region %s: %s", regionName, aerr)
-				}
-			} else {
-				log.Errorf("Failed to get sending quota from region %s: %s", regionName, err)
-			}
-			return
-		}
-
-		ch <- prometheus.MustNewConstMetric(e.max24hoursend, prometheus.GaugeValue, *sendQuotaOutput.Max24HourSend, regionName)
-		ch <- prometheus.MustNewConstMetric(e.maxsendrate, prometheus.GaugeValue, *sendQuotaOutput.MaxSendRate, regionName)
-		ch <- prometheus.MustNewConstMetric(e.sentlast24hours, prometheus.GaugeValue, *sendQuotaOutput.SentLast24Hours, regionName)
-		ch <- prometheus.MustNewConstMetric(e.Bounces, prometheus.GaugeValue, float64(*latestSendStatistics.Bounces), regionName)
-		ch <- prometheus.MustNewConstMetric(e.Complaints, prometheus.GaugeValue, float64(*latestSendStatistics.Complaints), regionName)
-		ch <- prometheus.MustNewConstMetric(e.DeliveryAttempts, prometheus.GaugeValue, float64(*latestSendStatistics.DeliveryAttempts), regionName)
-		ch <- prometheus.MustNewConstMetric(e.Rejects, prometheus.GaugeValue, float64(*latestSendStatistics.Rejects), regionName)
+		return
 	}
+
+	sortedSendStatistics := sortedDataPoint{
+		Data: sendStatisticsOutput.SendDataPoints,
+	}
+	sort.Sort(sortedSendStatistics)
+	latestSendStatistics := sortedSendStatistics.Data[len(sortedSendStatistics.Data)-1]
+
+	sendQuotaInput := &ses.GetSendQuotaInput{}
+	sendQuotaOutput, err := svc.GetSendQuota(sendQuotaInput)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			default:
+				log.Fatalf("Failed to get sending quota from region %s: %s", regionName, aerr)
+			}
+		} else {
+			log.Fatalf("Failed to get sending quota from region %s: %s", regionName, err)
+		}
+		return
+	}
+
+	ch <- prometheus.MustNewConstMetric(e.max24hoursend, prometheus.GaugeValue, *sendQuotaOutput.Max24HourSend, regionName)
+	ch <- prometheus.MustNewConstMetric(e.maxsendrate, prometheus.GaugeValue, *sendQuotaOutput.MaxSendRate, regionName)
+	ch <- prometheus.MustNewConstMetric(e.sentlast24hours, prometheus.GaugeValue, *sendQuotaOutput.SentLast24Hours, regionName)
+	ch <- prometheus.MustNewConstMetric(e.Bounces, prometheus.GaugeValue, float64(*latestSendStatistics.Bounces), regionName)
+	ch <- prometheus.MustNewConstMetric(e.Complaints, prometheus.GaugeValue, float64(*latestSendStatistics.Complaints), regionName)
+	ch <- prometheus.MustNewConstMetric(e.DeliveryAttempts, prometheus.GaugeValue, float64(*latestSendStatistics.DeliveryAttempts), regionName)
+	ch <- prometheus.MustNewConstMetric(e.Rejects, prometheus.GaugeValue, float64(*latestSendStatistics.Rejects), regionName)
 }
